@@ -1,7 +1,9 @@
 
+
 from flask import Flask
 import gradio as gr
-from starlette.middleware.wsgi import WSGIMiddleware
+from fastapi import FastAPI
+from fastapi.middleware.wsgi import WSGIMiddleware
 import uvicorn
 
 # Flask application
@@ -9,21 +11,35 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return '<h1>Welcome to Flask</h1><a href="/gradio">Open Gradio</a>'
+    return """
+    <h2>My Flask Application</h2>
+    <a href="/page1"><button>Page 1</button></a>
+    <a href="/gradio/"><button>Gradio</button></a>
+    """
+
+@app.route("/page1")
+def page1():
+    return "<h2>Welcome to Page 1</h2><a href='/'>Home</a>"
 
 # Gradio application
 def greet(name):
     return "Hello " + name
 
-demo = gr.Interface(fn=greet, inputs="text", outputs="text")
+demo = gr.Interface(
+    fn=greet,
+    inputs="text",
+    outputs="text",
+    title="My Gradio Application"
+)
 
-# Combine Flask and Gradio
-from fastapi import FastAPI
+# FastAPI application
+api = FastAPI()
 
-main_app = FastAPI()
-main_app.mount("/", WSGIMiddleware(app))
-main_app = gr.mount_gradio_app(main_app, demo, path="/gradio")
+# IMPORTANT: Mount Gradio FIRST
+api = gr.mount_gradio_app(api, demo, path="/gradio")
 
-# Run both on port 5000
+# Mount Flask LAST
+api.mount("/", WSGIMiddleware(app))
+
 if __name__ == "__main__":
-    uvicorn.run(main_app, host="0.0.0.0", port=5000)
+    uvicorn.run(api, host="0.0.0.0", port=5000)
